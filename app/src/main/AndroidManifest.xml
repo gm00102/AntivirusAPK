@@ -4,6 +4,13 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Для Android 10+ нужно добавить -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         tools:ignore="ForegroundServiceType" />
 
@@ -13,6 +20,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.MyApplication">
 
         <service
@@ -21,6 +29,7 @@
             android:stopWithTask="false"
             android:exported="false"/>
 
+        <!-- Главная активность -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -30,5 +39,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Активность для предупреждения -->
+        <activity
+            android:name=".AlertActivity"
+            android:theme="@style/Theme.MyApplication"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:exported="false"/>
     </application>
 </manifest>

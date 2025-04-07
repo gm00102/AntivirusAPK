@@ -33,61 +33,77 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import android.content.BroadcastReceiver
-
 import android.content.IntentFilter
-
+import android.provider.Settings
+import android.net.Uri
 
 private const val PERMISSION_REQUEST_CODE = 1001
 
 class MainActivity : ComponentActivity() {
     private lateinit var statusReceiver: BroadcastReceiver
-    private var isEnabled by mutableStateOf(false) // Состояние включения/выключения антивируса
+    private var isEnabled by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MyApplicationTheme {
-                AppContent(isEnabled = isEnabled, onStateChanged = { newState ->
-                    isEnabled = newState
-                })
+                AppContent(
+                    isEnabled = isEnabled,
+                    onStateChanged = { newState -> isEnabled = newState },
+                    context = this
+                )
             }
         }
 
-        // Создаем и регистрируем BroadcastReceiver
         statusReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val isRunning = intent?.getBooleanExtra("status", false) ?: false
-                updateUI(isRunning) // Обновляем UI, когда приходит новый статус
+                updateUI(isRunning)
             }
         }
 
-        val filter = IntentFilter("com.example.myapplication.ANTIVIRUS_STATUS")
-        registerReceiver(statusReceiver, filter, Context.RECEIVER_EXPORTED)
+        registerReceiver(statusReceiver, IntentFilter("com.example.myapplication.ANTIVIRUS_STATUS"),
+            Context.RECEIVER_EXPORTED)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Отменяем регистрацию приемника
         unregisterReceiver(statusReceiver)
     }
 
-    // Метод для обновления UI
     private fun updateUI(isRunning: Boolean) {
         isEnabled = isRunning
     }
 }
 
 @Composable
-fun AppContent(isEnabled: Boolean, onStateChanged: (Boolean) -> Unit) {
-    val context = LocalContext.current
+fun AppContent(
+    isEnabled: Boolean,
+    onStateChanged: (Boolean) -> Unit,
+    context: Context
+) {
+    val requestOverlayPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* Обработка результата */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            !Settings.canDrawOverlays(context)) {
+            requestOverlayPermission.launch(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+            )
+        }
+    }
+
+
 
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            toggleService(context, !isEnabled) { newState ->
-                onStateChanged(newState) // Обновляем состояние
-            }
+            toggleService(context, !isEnabled, onStateChanged)
         } else {
             Toast.makeText(
                 context,
@@ -97,24 +113,19 @@ fun AppContent(isEnabled: Boolean, onStateChanged: (Boolean) -> Unit) {
         }
     }
 
-    LaunchedEffect(isEnabled) {
-        snapshotFlow { AntivirusService.isRunning }
-            .collect { isRunning ->
-                onStateChanged(isRunning) // Обновляем состояние
-            }
-    }
-
+    // Остальной код AppContent остается без изменений
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.align(Alignment.TopCenter) // Для верхнего выравнивания текста
         ) {
             Text(
-                text = "Антивирус APK",
+                text = "Обнаружитель APK",
                 style = TextStyle(fontSize = 30.sp),
                 modifier = Modifier
                     .padding(top = 50.dp)
@@ -241,7 +252,7 @@ private fun showStoppedNotification(context: Context) {
     )
 
     val notification = NotificationCompat.Builder(context, "antivirus_channel")
-        .setContentTitle("Антивирус APK")
+        .setContentTitle("Обнаружитель APK")
         .setContentText("Защита отключена")
         .setSmallIcon(R.drawable.ic_launcher_foreground)
         .setContentIntent(pendingIntent) // Добавлено для перехода
